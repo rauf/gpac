@@ -443,12 +443,12 @@ static GF_ESD *od_get_esd(GF_ObjectDescriptor *OD, u16 ESID)
 	return NULL;
 }
 
-#ifdef GPAC_UNUSED_FUNC
-static void ODM_SelectAlternateStream(GF_ObjectManager *odm, u32 lang_code, u8 stream_type)
+static void ODM_SelectAlternateStream(GF_ObjectManager *odm, const char *lang_3cc, const char *lang_2cc, u8 stream_type)
 {
 	u32 i;
 	GF_ESD *esd;
 	u16 def_id, es_id;
+	char esCode[4];
 
 	def_id = 0;
 	i=0;
@@ -459,7 +459,12 @@ static void ODM_SelectAlternateStream(GF_ObjectManager *odm, u32 lang_code, u8 s
 			if (!def_id) def_id = esd->ESID;
 			continue;
 		}
-		if (esd->langDesc->langCode==lang_code) {
+		esCode[0] = esd->langDesc->langCode>>16;
+		esCode[1] = esd->langDesc->langCode>>8;
+		esCode[2] = esd->langDesc->langCode;
+		esCode[3] = 0;
+		
+		if (!stricmp(esCode, lang_3cc) || !strnicmp(esCode, lang_2cc, 2)) {
 			def_id = esd->ESID;
 			break;
 		} else if (!def_id) {
@@ -493,8 +498,6 @@ static void ODM_SelectAlternateStream(GF_ObjectManager *odm, u32 lang_code, u8 s
 		}
 	}
 }
-#endif /*GPAC_UNUSED_FUNC*/
-
 
 /*Validate the streams in this OD, and check if we have to setup an inline scene*/
 GF_Err ODM_ValidateOD(GF_ObjectManager *odm, Bool *hasInline)
@@ -502,7 +505,7 @@ GF_Err ODM_ValidateOD(GF_ObjectManager *odm, Bool *hasInline)
 	u32 i;
 	u16 es_id, ck_id;
 	GF_ESD *esd, *base_scene;
-	const char *sOpt;
+	const char *lang_3cc, *lang_2cc;
 	u32 nb_od, nb_ocr, nb_scene, nb_mp7, nb_ipmp, nb_oci, nb_mpj, nb_other, prev_st;
 
 	nb_od = nb_ocr = nb_scene = nb_mp7 = nb_ipmp = nb_oci = nb_mpj = nb_other = 0;
@@ -570,25 +573,31 @@ GF_Err ODM_ValidateOD(GF_ObjectManager *odm, Bool *hasInline)
 	/*the rest should be OK*/
 
 	/*select independant streams - check language and (TODO) bitrate & term caps*/
-	sOpt = gf_cfg_get_key(odm->term->user->config, "Systems", "Language3CC");
-	if (!sOpt) {
-		sOpt = "eng";
-		gf_cfg_set_key(odm->term->user->config, "Systems", "Language3CC", sOpt);
+	lang_3cc = gf_cfg_get_key(odm->term->user->config, "Systems", "Language3CC");
+	if (!lang_3cc) {
+		lang_3cc = "eng";
+		gf_cfg_set_key(odm->term->user->config, "Systems", "Language3CC", "eng");
 		gf_cfg_set_key(odm->term->user->config, "Systems", "Language2CC", "en");
 		gf_cfg_set_key(odm->term->user->config, "Systems", "LanguageName", "English");
 	}
-#if 0
-	lang = (sOpt[0]<<16) | (sOpt[1]<<8) | sOpt[2];
-	if (gf_list_count(odm->OD->ESDescriptors)>1) {
-		ODM_SelectAlternateStream(odm, lang, GF_STREAM_SCENE);
-		ODM_SelectAlternateStream(odm, lang, GF_STREAM_OD);
-		ODM_SelectAlternateStream(odm, lang, GF_STREAM_VISUAL);
-		ODM_SelectAlternateStream(odm, lang, GF_STREAM_AUDIO);
-		ODM_SelectAlternateStream(odm, lang, GF_STREAM_IPMP);
-		ODM_SelectAlternateStream(odm, lang, GF_STREAM_INTERACT);
-		ODM_SelectAlternateStream(odm, lang, GF_STREAM_TEXT);
+	lang_2cc = gf_cfg_get_key(odm->term->user->config, "Systems", "Language2CC");
+	if (!lang_2cc) {
+		lang_2cc = "en";
+		gf_cfg_set_key(odm->term->user->config, "Systems", "Language3CC", "eng");
+		gf_cfg_set_key(odm->term->user->config, "Systems", "Language2CC", "en");
+		gf_cfg_set_key(odm->term->user->config, "Systems", "LanguageName", "English");
 	}
-#endif
+
+	if (gf_list_count(odm->OD->ESDescriptors)>1) {
+		ODM_SelectAlternateStream(odm, lang_3cc, lang_2cc, GF_STREAM_SCENE);
+		ODM_SelectAlternateStream(odm, lang_3cc, lang_2cc, GF_STREAM_OD);
+		ODM_SelectAlternateStream(odm, lang_3cc, lang_2cc, GF_STREAM_VISUAL);
+		ODM_SelectAlternateStream(odm, lang_3cc, lang_2cc, GF_STREAM_AUDIO);
+		ODM_SelectAlternateStream(odm, lang_3cc, lang_2cc, GF_STREAM_IPMP);
+		ODM_SelectAlternateStream(odm, lang_3cc, lang_2cc, GF_STREAM_INTERACT);
+		ODM_SelectAlternateStream(odm, lang_3cc, lang_2cc, GF_STREAM_TEXT);
+	}
+
 	/*no scene, OK*/
 	if (!nb_scene) return GF_OK;
 
@@ -957,6 +966,7 @@ GF_Err gf_odm_setup_es(GF_ObjectManager *odm, GF_ESD *esd, GF_ClientService *ser
 	Bool emulated_od = 0;
 	GF_Err e;
 	GF_Scene *scene;
+	Bool clock_inherited = GF_TRUE;
 
 	/*find the clock for this new channel*/
 	ck = NULL;
@@ -1050,6 +1060,7 @@ GF_Err gf_odm_setup_es(GF_ObjectManager *odm, GF_ESD *esd, GF_ClientService *ser
 	if (!ck) return GF_OUT_OF_MEM;
 	esd->OCRESID = ck->clockID;
 	ck->service_id = odm->OD->ServiceID;
+	clock_inherited = GF_FALSE;
 	/*special case for non-dynamic scenes forcing clock share of all subscene, we assign the
 	parent scene clock to the first clock created in the sunscenes*/
 	if (scene->root_od->parentscene && scene->root_od->parentscene->force_single_timeline && !scene->root_od->parentscene->dyn_ck)
@@ -1061,6 +1072,7 @@ clock_setup:
 	if (!ch) return GF_OUT_OF_MEM;
 	ch->clock = ck;
 	ch->service = serv;
+	ch->clock_inherited = clock_inherited;
 
 	GF_LOG(GF_LOG_DEBUG, GF_LOG_MEDIA, ("[ODM] Creating codec for stream %d\n", ch->esd->ESID));
 

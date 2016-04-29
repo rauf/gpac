@@ -34,7 +34,9 @@ single_playback_test "$EXTERNAL_MEDIA_DIR/import/bear_video.263" "mp4client-h263
 
 single_playback_test "$EXTERNAL_MEDIA_DIR/import/rus_utf16.srt" "mp4client-srt-utf16"
 
-single_playback_test "$EXTERNAL_MEDIA_DIR/import/dead.ogg" "mp4client-ogg"
+single_playback_test "$EXTERNAL_MEDIA_DIR/import/dead_ogg.ogg" "mp4client-ogg"
+
+single_playback_test "$EXTERNAL_MEDIA_DIR/import/dead_mpg.mpg" "mp4client-mpg"
 
 fi
 
@@ -52,5 +54,12 @@ single_playback_test "-opt Video:DriverName=sdl_out -opt Compositor:OpenGLMode=h
 single_playback_test "-opt Video:DriverName=sdl_out -opt Compositor:OpenGLMode=hybrid -no-save $MEDIA_DIR/auxiliary_files/count_video.cmp" "mp4client-sdlgl-yuv"
 
 single_playback_test "-opt Video:DriverName=sdl_out -opt Compositor:OpenGLMode=hybrid -no-save $MEDIA_DIR/bifs/bifs-2D-background-background2D-image.bt" "mp4client-sdlgl-compose"
+
+
+# misc MP4Client tests
+outfile=$TEMP_DIR/bifs-od-language-code.mp4
+$MP4Box -mp4 $MEDIA_DIR/bifs/bifs-od-language-code.bt -out $outfile
+single_playback_test "-opt Systems:Language3CC=fre -opt Systems:Language2CC=fr -no-save $outfile" "mp4client-lang-fr"
+rm $outfile 2> /dev/null
 
 
