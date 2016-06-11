@@ -1,4 +1,4 @@
-package com.gpac.Osmo4.decoder;
+package com.gpac.Osmo4;
 
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
@@ -31,7 +31,7 @@ public class VideoDecoder {
         this.path = path;
     }
 
-/*
+
     public void decode() {
         extractor = new MediaExtractor();
 
@@ -55,7 +55,7 @@ public class VideoDecoder {
         }
 
         codec.start();
-        inputBuffers = codec.getInputBuffers(); //should be replaced with ByteBuffer.allocate(int)
+        inputBuffers = codec.getInputBuffers();
         outputBuffers = codec.getOutputBuffers();
 
         boolean isEOS = false;
@@ -101,14 +101,13 @@ public class VideoDecoder {
                     outData.clear();
                 } else outData = codec.getOutputBuffer(outputIndex);
 
-            */
-/*
+
             if(outputIndex >= 0 && info.size != 0) {
 
                 outData.position(info.offset);
                 outData.limit(info.offset + info.size);
             }
-            *//*
+
 
 
                 switch (outputIndex) {
@@ -142,7 +141,6 @@ public class VideoDecoder {
 
         release();
     }
-*/
 
 
     private void init(){
@@ -216,11 +214,15 @@ public class VideoDecoder {
 
     private boolean release() {
         try {
-            codec.stop();
-            codec.release();
-            extractor.release();
-            codec = null;
-            extractor = null;
+            if (codec != null) {
+                codec.stop();
+                codec.release();
+                codec = null;
+            }
+            if (extractor != null) {
+                extractor.release();
+                extractor = null;
+            }
             return true;
         } catch (Exception e) {
             Log.e(TAG, "release failed" + e);
