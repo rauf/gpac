@@ -24,13 +24,13 @@ model {
                 jni {
                     source {
                         //srcDirs 'src/main/jni'
-                        srcDirs = ['src/main/none']
-                    //    srcDirs = []
+                        //srcDirs = ['src/main/none']
+                        srcDirs = []
                     }
                 }
                 jniLibs {
                     source {
-                        srcDirs = ['src/main/jniLibs']
+                        srcDirs 'src/main/jniLibs'
                     }
                 }
             }
