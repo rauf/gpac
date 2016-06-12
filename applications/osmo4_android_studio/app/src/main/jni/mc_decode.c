@@ -3,18 +3,17 @@
 
 #include "com_gpac_Osmo4_Decoder.h"
 
+//#include <gpac/modules/codec.h>
+
 #include "media/NdkMediaCodec.h"
 #include "media/NdkMediaExtractor.h"
+#include "media/NdkMediaFormat.h"
 
 
 // for native window JNI
 #include <android/native_window_jni.h>
 #include <android/asset_manager.h>
 #include <android/asset_manager_jni.h>
-
-#ifndef _Included_com_gpac_Osmo4_Decoder
-#define _Included_com_gpac_Osmo4_Decoder
-#ifdef __cplusplus
 
 
 #include<android/log.h>
@@ -27,55 +26,57 @@
 #define LOGI(...)  __android_log_print(ANDROID_LOG_INFO, TAG,  __VA_ARGS__)
 
 
-
+typedef struct {
     ANativeWindow *window;
     AMediaCodec *codec;
     AMediaExtractor *extractor;
     bool isPlaying;
+    __u32 width;
+    __u32 height;
+} MCDec;
+
 
 
     //select track using MediaExtractor
-    size_t selectTrack() {
-        size_t trackCount = AMediaExtractor_getTrackCount(extractor);
-
+    __u32 selectTrack(MCDec *dec) {
+        int trackCount = (int) AMediaExtractor_getTrackCount(dec->extractor);
+        size_t i;
         LOGV("Total num. of tracks: %d", trackCount);
-        for (size_t i = 0; i < trackCount; ++i) {
-            AMediaFormat *format = AMediaExtractor_getTrackFormat(extractor, i);
+        for (i = 0; i < trackCount; ++i) {
+            AMediaFormat *format = AMediaExtractor_getTrackFormat(dec->extractor, i);
 
             char *mime;
 
-            Bool b = AMediaFormat_getString(format, AMediaFormat_KEY_MIME, &mime);
+            bool b = AMediaFormat_getString(format, AMEDIAFORMAT_KEY_MIME, &mime);
 
             if(!b) {
-                LOGE("No mime type")
-                return;
+                LOGE("No mime type");
+                return -1;
             }
             else LOGI("Track num.: %d, mime type: %s ", i, mime);
 
             if (!strncmp(mime, "video/", 6)) {
                 LOGI("Selected Track num.: %d, mime type: %s", i, mime);
-                AMediaExtractor_selectTrack(extractor, i);
+                AMediaExtractor_selectTrack(dec->extractor, i);
 
-                AMediaExtractor_selectTrack(ex, i);
-                codec = AMediaCodec_createDecoderByType(mime);
-                AMediaCodec_configure(codec, format, window, NULL, 0);
+                AMediaExtractor_selectTrack(dec->extractor, i);
+                dec->codec = AMediaCodec_createDecoderByType(mime);
+                AMediaCodec_configure(dec->codec, format, dec->window, NULL, 0);
                 AMediaFormat_delete(format);
-                AMediaCodec_start(codec);
-                videoWidth = AMediaFormat_getInteger(AMediaFormat_KEY_WIDTH);
-                videoHeight = AMediaFormat_getInteger(AMediaFormat_KEY_HEIGHT);
-                Log.i(TAG, "Video size = " + videoWidth + " x " + videoHeight);
+                AMediaCodec_start(dec->codec);
+                //dec->width = AMediaFormat_getInteger(AMediaFormat_KEY_WIDTH);
+                //dec->height = AMediaFormat_getInteger(AMediaFormat_KEY_HEIGHT);
+                LOGI(TAG, "Video size = %d x %d ",dec->width, dec->height);
                 return i;
             }
 
         }
         LOGE("Video Track not found");
-        return -1;
+        return  -1;
     }
 
 
 
-extern "C" {
-#endif
 /*
  * Class:     com_gpac_Osmo4_Decoder
  * Method:    init
@@ -84,6 +85,7 @@ extern "C" {
 JNIEXPORT void JNICALL Java_com_gpac_Osmo4_Decoder_init
   (JNIEnv * env, jobject obj, jstring jpath) {
 
+    /*
     const char* path = env->GetStringUTFChars(jpath, JNI_FALSE);
     LOGV("Data Source path: '%s'", path);
 
@@ -108,7 +110,7 @@ JNIEXPORT void JNICALL Java_com_gpac_Osmo4_Decoder_init
     if (codec == NULL)
          return;
 
-
+*/
 
 
 
@@ -121,7 +123,7 @@ JNIEXPORT void JNICALL Java_com_gpac_Osmo4_Decoder_init
  * Signature: (Z)Z
  */
 JNIEXPORT jboolean JNICALL Java_com_gpac_Osmo4_Decoder_setPlaying
-  (JNIEnv *, jobject, jboolean) {
+  (JNIEnv * env, jobject obj, jboolean isPlaying) {
 
   }
 
@@ -131,7 +133,7 @@ JNIEXPORT jboolean JNICALL Java_com_gpac_Osmo4_Decoder_setPlaying
  * Signature: (Landroid/view/Surface;)Z
  */
 JNIEXPORT jboolean JNICALL Java_com_gpac_Osmo4_Decoder_setSurface
-  (JNIEnv *, jobject, jobject) {
+  (JNIEnv * env, jobject obj, jobject surface) {
 
   }
 
@@ -141,11 +143,6 @@ JNIEXPORT jboolean JNICALL Java_com_gpac_Osmo4_Decoder_setSurface
  * Signature: ()V
  */
 JNIEXPORT void JNICALL Java_com_gpac_Osmo4_Decoder_release
-  (JNIEnv *, jobject) {
+  (JNIEnv * env, jobject obj) {
 
   }
-
-#ifdef __cplusplus
-}
-#endif
-#endif

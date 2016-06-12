@@ -1,5 +1,6 @@
 package com.gpac.Osmo4;
 
+import android.provider.Settings;
 import android.view.Surface;
 
 /**
@@ -7,7 +8,7 @@ import android.view.Surface;
  */
 public class Decoder {
 
-    private final String TAG = "VideoDecoder";
+    private final String TAG = "mc_decode";
     private String path;
 
     private native void init(String path);
@@ -22,6 +23,10 @@ public class Decoder {
 
     public void start(){
         init(path);
+    }
+
+    static {
+        System.loadLibrary("mc_decode");
     }
 
 }

@@ -1,62 +1,105 @@
-apply plugin: 'com.android.application'
+apply plugin: "com.android.model.application"
+
 import org.apache.tools.ant.taskdefs.condition.Os
 
-android {
-    compileSdkVersion 23
-    buildToolsVersion "23.0.3"
 
-    defaultConfig {
-        applicationId "com.gpac.Osmo4"
-        minSdkVersion 16
-        targetSdkVersion 22
-    }
+model {
+    android {
+        compileSdkVersion = 23
+        buildToolsVersion = "23.0.3"
 
-    sourceSets.main {
-        jni.srcDirs = [] // This prevents the auto generation of Android.mk
-        jniLibs.srcDir 'src/main/jniLibs' // This is not necessary unless you have precompiled libraries in your project.
-    }
-
-    task buildNative(type: Exec, description: 'Compile JNI source via NDK') {
-        def ndkDir = android.ndkDirectory
-        def ndkCmd = "ndk-build"
-        if (Os.isFamily(Os.FAMILY_WINDOWS)) {
-            ndkCmd = "ndk-build.cmd"
+        defaultConfig {
+            applicationId = "com.gpac.Osmo4"
+            minSdkVersion.apiLevel = 16
+            targetSdkVersion.apiLevel = 22
         }
 
-        commandLine "$ndkDir/$ndkCmd",
-                '-C', file('src/main/jni').absolutePath, // Change src/main/jni the relative path to your jni source
-                '-j', Runtime.runtime.availableProcessors(),
-                'all',
-                'NDK_DEBUG=1'
-    }
-
-    task cleanNative(type: Exec, description: 'Clean JNI object files') {
-        def ndkDir = android.ndkDirectory
-        def ndkCmd = "ndk-build"
-        if (Os.isFamily(Os.FAMILY_WINDOWS)) {
-            ndkCmd = "ndk-build.cmd"
+        ndk{
+            moduleName "mc_decode"
         }
 
-        commandLine "$ndkDir/$ndkCmd",
-                '-C', file('src/main/jni').absolutePath, // Change src/main/jni the relative path to your jni source
-                'clean'
-    }
 
-    clean.dependsOn 'cleanNative'
-
-    tasks.withType(JavaCompile) {
-        compileTask -> compileTask.dependsOn buildNative
-    }
-
-
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
+        sources {
+            main {
+                jni {
+                    source {
+                        //srcDirs 'src/main/jni'
+                        srcDirs = ['src/main/none']
+                    //    srcDirs = []
+                    }
+                }
+                jniLibs {
+                    source {
+                        srcDirs = ['src/main/jniLibs']
+                    }
+                }
+            }
         }
+
+
+
+/*
+
+        sourceSets.main {
+            jni.srcDirs = [] // This prevents the auto generation of Android.mk
+            jniLibs.srcDir 'src/main/libs'
+            // This is not necessary unless you have precompiled libraries in your project.
+        }
+*/
+
+
+        task buildNative(type: Exec, description: 'Compile JNI source via NDK') {
+            //def ndkDir = android.ndkDirectory             //will not work. property name change. name is not stabilized
+            Properties properties = new Properties()
+            properties.load(project.rootProject.file('local.properties').newDataInputStream())
+            def ndkDir = properties.getProperty('ndk.dir')
+            def ndkCmd = "ndk-build"
+
+            if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+                ndkCmd = "ndk-build.cmd"
+            }
+
+            commandLine "$ndkDir/$ndkCmd",
+                    '-C', file('src/main/jni').absolutePath, // Change src/main/jni the relative path to your jni source
+                    '-j', Runtime.runtime.availableProcessors(),
+                    'all',
+                    'NDK_DEBUG=1'
+        }
+
+        task cleanNative(type: Exec, description: 'Clean JNI object files') {
+            //def ndkDir = android.ndkDirectory             //will not work. property name change. name is not stabilized
+            Properties properties = new Properties()
+            properties.load(project.rootProject.file('local.properties').newDataInputStream())
+            def ndkDir = properties.getProperty('ndk.dir')
+            def ndkCmd = "ndk-build"
+
+            if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+                ndkCmd = "ndk-build.cmd"
+            }
+
+            commandLine "$ndkDir/$ndkCmd",
+                    '-C', file('src/main/jni').absolutePath, // Change src/main/jni the relative path to your jni source
+                    'clean'
+        }
+
+        clean.dependsOn 'cleanNative'
+
+        tasks.withType(JavaCompile) {
+            compileTask -> compileTask.dependsOn buildNative
+        }
+
+
+        buildTypes {
+            release {
+                minifyEnabled false
+                proguardFiles.add(file("proguard-android.txt"))
+                proguardFiles.add(file("proguard-rules.txt"))
+            }
+        }
+
     }
+
 }
-
-dependencies {
-    compile files('libs/real3d.jar')
-}
+    dependencies {
+        compile files('libs/real3d.jar')
+    }
